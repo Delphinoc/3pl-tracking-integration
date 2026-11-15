@@ -1,0 +1,25 @@
+partner_id,partner_status_code,partner_description,canonical_status
+SLX,ORD,Order received,CREATED
+SLX,PU,Picked up from seller,PICKED_UP
+SLX,HUB_IN,Arrived at hub,AT_SORT_CENTRE
+SLX,HUB_OUT,Departed hub,IN_TRANSIT
+SLX,OFD,Out for delivery,OUT_FOR_DELIVERY
+SLX,DLV,Delivered,DELIVERED
+SLX,DF_NA,Delivery failed - recipient not available,DELIVERY_FAILED
+SLX,DF_ADDR,Delivery failed - address issue,DELIVERY_FAILED
+SLX,RTS,Return to sender initiated,RETURNING_TO_SENDER
+SLX,RTS_DONE,Returned to sender,RETURNED
+SLX,LOST,Parcel lost,LOST
+SLX,CXL,Shipment cancelled,CANCELLED
+KGN,10,Shipment created,CREATED
+KGN,20,Collected,PICKED_UP
+KGN,30,Sorting,AT_SORT_CENTRE
+KGN,35,Linehaul departed,IN_TRANSIT
+KGN,40,With courier,OUT_FOR_DELIVERY
+KGN,50,Delivered,DELIVERED
+KGN,51,Delivered to neighbour,DELIVERED
+KGN,60,Attempt failed,DELIVERY_FAILED
+KGN,70,Returning,RETURNING_TO_SENDER
+KGN,75,Return completed,RETURNED
+KGN,90,Missing,LOST
+KGN,99,Voided,CANCELLED

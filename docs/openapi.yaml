@@ -1,0 +1,122 @@
+openapi: 3.0.3
+info:
+  title: Partner Tracking Events API
+  version: 0.1.0
+  description: >
+    Inbound API for third-party logistics partners (3PLs) to push parcel
+    tracking events, and a read endpoint for internal consumers (buyer
+    tracking page, operations dashboards). Behaviour rules are in
+    docs/PRD.md section 6; acceptance criteria in section 7.
+servers:
+  - url: https://api.example-marketplace.test
+paths:
+  /v1/partners/{partner_id}/tracking-events:
+    post:
+      summary: Push a batch of tracking events
+      description: >
+        Accepts up to 500 events per call. Each event is processed on its own,
+        so one bad event does not fail the batch. Re-sending an event with the
+        same event_id is safe (idempotent).
+      security:
+        - partnerSignature: []
+      parameters:
+        - name: partner_id
+          in: path
+          required: true
+          schema: {type: string, example: SLX}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [events]
+              properties:
+                events:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items: {$ref: '#/components/schemas/TrackingEventIn'}
+      responses:
+        '207':
+          description: Per-event results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items: {$ref: '#/components/schemas/EventResult'}
+        '400': {description: Malformed body (not valid JSON or no events)}
+        '401': {description: Missing or invalid signature}
+        '413': {description: More than 500 events}
+        '429': {description: Rate limit exceeded; retry with backoff}
+  /v1/parcels/{tracking_no}/events:
+    get:
+      summary: Get a parcel's current status and canonical event history
+      security:
+        - internalToken: []
+      parameters:
+        - name: tracking_no
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: Parcel tracking view
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ParcelTracking'}
+        '404': {description: Unknown tracking number}
+components:
+  securitySchemes:
+    partnerSignature:
+      type: apiKey
+      in: header
+      name: X-Partner-Signature
+      description: HMAC-SHA256 of the raw body with the partner's shared secret.
+    internalToken:
+      type: http
+      scheme: bearer
+  schemas:
+    TrackingEventIn:
+      type: object
+      required: [event_id, tracking_no, partner_status_code, event_time, market]
+      properties:
+        event_id: {type: string, description: Partner-unique ID; idempotency key}
+        tracking_no: {type: string}
+        partner_status_code: {type: string, example: OFD}
+        event_time: {type: string, format: date-time, description: When it happened (with offset)}
+        market: {type: string, enum: [SG, MY, VN]}
+        location: {type: string, nullable: true, example: Tampines Station}
+        failure_reason: {type: string, nullable: true, example: recipient_not_available}
+    EventResult:
+      type: object
+      required: [event_id, outcome]
+      properties:
+        event_id: {type: string}
+        outcome:
+          type: string
+          enum: [applied, duplicate, history_only, needs_review, quarantined, rejected]
+        canonical_status: {type: string, nullable: true}
+        message: {type: string, nullable: true}
+    ParcelTracking:
+      type: object
+      required: [tracking_no, current_status, events]
+      properties:
+        tracking_no: {type: string}
+        current_status: {$ref: '#/components/schemas/CanonicalStatus'}
+        last_updated: {type: string, format: date-time}
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              status: {$ref: '#/components/schemas/CanonicalStatus'}
+              event_time: {type: string, format: date-time}
+              location: {type: string, nullable: true}
+    CanonicalStatus:
+      type: string
+      enum: [CREATED, PICKED_UP, AT_SORT_CENTRE, IN_TRANSIT, OUT_FOR_DELIVERY,
+             DELIVERED, DELIVERY_FAILED, RETURNING_TO_SENDER, RETURNED, LOST, CANCELLED]
